@@ -29,14 +29,22 @@ func main() {
 	r := tinygin.New()
 
 	// 使用 GET()方法添加路由
-	r.GET("/", func(w http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(w, "URL.Path = %q\n", req.URL.Path)
+	//r.GET("/", func(w http.ResponseWriter, req *http.Request) {
+	//	fmt.Fprintf(w, "URL.Path = %q\n", req.URL.Path)
+	//})
+	r.GET("/", func(c *tinygin.Context) {
+		c.HTML(http.StatusOK, "<h1>Hello Go</h1>")
 	})
-	r.GET("/hello", func(w http.ResponseWriter, req *http.Request) {
-		for k, v := range req.Header {
-			fmt.Fprintf(w, "Header[%q] = %q\n", k, v)
-		}
+	r.GET("/hello", func(c *tinygin.Context) {
+		// expect /hello?name=geektutu
+		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
 	})
+
+	//r.GET("/hello", func(w http.ResponseWriter, req *http.Request) {
+	//	for k, v := range req.Header {
+	//		fmt.Fprintf(w, "Header[%q] = %q\n", k, v)
+	//	}
+	//})
 
 	// 使用Run()启动Web服务
 	r.Run(":9999")
