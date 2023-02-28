@@ -30,6 +30,7 @@ func newContext(w http.ResponseWriter, req *http.Request) *Context {
 }
 
 func (c *Context) PostForm(key string) string {
+	// FormValue 返回查询的命名组件的第一个值
 	return c.Req.FormValue(key)
 }
 

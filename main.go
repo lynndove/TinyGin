@@ -40,6 +40,13 @@ func main() {
 		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
 	})
 
+	r.POST("/login", func(c *tinygin.Context) {
+		c.JSON(http.StatusOK, tinygin.H{
+			"username": c.PostForm("username"),
+			"password": c.PostForm("password"),
+		})
+	})
+
 	//r.GET("/hello", func(w http.ResponseWriter, req *http.Request) {
 	//	for k, v := range req.Header {
 	//		fmt.Fprintf(w, "Header[%q] = %q\n", k, v)

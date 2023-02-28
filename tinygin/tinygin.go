@@ -60,6 +60,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	//	// w.WriteHeader(http.StatusNotFound)
 	//	fmt.Fprintf(w, "404 NOT FOUND: %s\n", req.URL)
 	//}
+	// 在调用 router.handle 之前, 构造了一个 Context 对象
 	c := newContext(w, req)
 	engine.router.handle(c)
 }
