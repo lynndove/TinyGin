@@ -1,6 +1,7 @@
 package tinygin
 
 import (
+	"log"
 	"net/http"
 )
 
@@ -12,33 +13,61 @@ type HandlerFunc func(*Context)
 // 例如GET-/、GET-/hello、POST-/hello
 // 这样针对相同的路由，如果请求方法不同,可以映射不同的处理方法(Handler)
 // value 是用户映射的处理方法
-type Engine struct {
-	// router map[string]HandlerFunc
-	router *router
-}
+type (
+	RouterGroup struct {
+		prefix      string
+		middlewares []HandlerFunc
+		engine      *Engine
+	}
+	// go 中的嵌套类型，类似 Java/Python 等语言的继承
+	// 这样 Engine 就可以拥有 RouterGroup 的属性了
+	Engine struct {
+		*RouterGroup
+		// router map[string]HandlerFunc
+		router *router
+		groups []*RouterGroup // store all groups
+	}
+)
 
 // New is the constructor of gin.Engine
 func New() *Engine {
 	// return &Engine{router: make(map[string]HandlerFunc)}
-	return &Engine{router: newRouter()}
+	engine := &Engine{router: newRouter()}
+	engine.RouterGroup = &RouterGroup{engine: engine}
+	engine.groups = []*RouterGroup{engine.RouterGroup}
+	return engine
 }
 
-func (engine *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
+// create a new RouterGroup
+func (group *RouterGroup) Group(prefix string) *RouterGroup {
+	engine := group.engine
+	newGroup := &RouterGroup{
+		prefix: group.prefix + prefix,
+		engine: engine,
+	}
+	engine.groups = append(engine.groups, newGroup)
+	return newGroup
+}
+
+func (group *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
 	//key := method + "-" + pattern
 	//engine.router[key] = handler
-	engine.router.addRoute(method, pattern, handler)
+	//  group.prefix + prefix 的方式 group 初始化时已经拼接了完整的 prefix
+	pattern := group.prefix + comp
+	log.Printf("Route %4s - %s", method, pattern)
+	group.engine.router.addRoute(method, pattern, handler)
 }
 
 // GET defines the method to add GET request
 // 当用户调用(*Engine).GET()方法时
 // 会将路由和处理方法注册到映射表 router 中
-func (engine *Engine) GET(pattern string, handler HandlerFunc) {
-	engine.addRoute("GET", pattern, handler)
+func (group *RouterGroup) GET(pattern string, handler HandlerFunc) {
+	group.addRoute("GET", pattern, handler)
 }
 
 // POST defines the method to add POST request
-func (engine *Engine) POST(pattern string, handler HandlerFunc) {
-	engine.addRoute("POST", pattern, handler)
+func (group *RouterGroup) POST(pattern string, handler HandlerFunc) {
+	group.addRoute("POST", pattern, handler)
 }
 
 // Run defines the method to start a http server

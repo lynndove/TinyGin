@@ -2,59 +2,85 @@ package main
 
 import (
 	"TinyGin/tinygin"
-	"fmt"
 	"net/http"
 )
 
-type Engine struct{}
+// type Engine struct{}
 
-func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	switch req.URL.Path {
-	case "/":
-		fmt.Fprintf(w, "URL.Path = %q\n", req.URL.Path)
-
-	case "/hello":
-		for k, v := range req.Header {
-			fmt.Fprintf(w, "Header[%q] = %q\n", k, v)
-		}
-	default:
-		fmt.Fprintf(w, "404 NOTFOUND: %s\n", req.URL)
-	}
-}
+//func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+//	switch req.URL.Path {
+//	case "/":
+//		fmt.Fprintf(w, "URL.Path = %q\n", req.URL.Path)
+//
+//	case "/hello":
+//		for k, v := range req.Header {
+//			fmt.Fprintf(w, "Header[%q] = %q\n", k, v)
+//		}
+//	default:
+//		fmt.Fprintf(w, "404 NOTFOUND: %s\n", req.URL)
+//	}
+//}
 
 func main() {
 	//http.HandleFunc("/", indexHandler)
 	//http.HandleFunc("/hello", helloHandler)
 	// 使用New()创建 gin 的实例
+
 	r := tinygin.New()
 
 	// 使用 GET()方法添加路由
 	//r.GET("/", func(w http.ResponseWriter, req *http.Request) {
 	//	fmt.Fprintf(w, "URL.Path = %q\n", req.URL.Path)
 	//})
-	r.GET("/", func(c *tinygin.Context) {
-		c.HTML(http.StatusOK, "<h1>Hello Go</h1>")
+	//r.GET("/", func(c *tinygin.Context) {
+	//	c.HTML(http.StatusOK, "<h1>Hello Go</h1>")
+	//})
+
+	r.GET("/index", func(c *tinygin.Context) {
+		c.HTML(http.StatusOK, "<h1>Index Page</h1>")
 	})
 
-	r.GET("/hello", func(c *tinygin.Context) {
-		// expect /hello?name=tinggin
+	// Engine 拥有 RouterGroup 的属性
+	v1 := r.Group("/v1")
+	v1.GET("/", func(c *tinygin.Context) {
+		c.HTML(http.StatusOK, "<h1>Hello Go</h1>")
+	})
+	v1.GET("/hello", func(c *tinygin.Context) {
+		// expect /hello?name=tinygin
 		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
 	})
 
-	r.GET("/hello/:name", func(c *tinygin.Context) {
+	v2 := r.Group("/v2")
+	// // expect /hello/tinygin
+	v2.GET("/hello/:name", func(c *tinygin.Context) {
 		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)
 	})
-
-	r.GET("/assets/*filepath", func(c *tinygin.Context) {
-		c.JSON(http.StatusOK, tinygin.H{"filepath": c.Param("filepath")})
-	})
-
-	r.POST("/login", func(c *tinygin.Context) {
+	v2.POST("/login", func(c *tinygin.Context) {
 		c.JSON(http.StatusOK, tinygin.H{
 			"username": c.PostForm("username"),
 			"password": c.PostForm("password"),
 		})
 	})
+
+	//r.GET("/hello", func(c *tinygin.Context) {
+	//	// expect /hello?name=tinggin
+	//	c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
+	//})
+	//
+	//r.GET("/hello/:name", func(c *tinygin.Context) {
+	//	c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)
+	//})
+	//
+	//r.GET("/assets/*filepath", func(c *tinygin.Context) {
+	//	c.JSON(http.StatusOK, tinygin.H{"filepath": c.Param("filepath")})
+	//})
+	//
+	//r.POST("/login", func(c *tinygin.Context) {
+	//	c.JSON(http.StatusOK, tinygin.H{
+	//		"username": c.PostForm("username"),
+	//		"password": c.PostForm("password"),
+	//	})
+	//})
 
 	//r.GET("/hello", func(w http.ResponseWriter, req *http.Request) {
 	//	for k, v := range req.Header {
