@@ -49,12 +49,41 @@ func (r *router) addRoute(method string, pattern string, handler HandlerFunc) {
 	}
 	r.roots[method].insert(pattern, parts, 0)
 	r.handlers[key] = handler
-} // 2.28
+}
+
+func (r *router) getRoute(method string, path string) (*node, map[string]string) {
+	searchParts := parsePattern(path)
+	params := make(map[string]string)
+	root, ok := r.roots[method]
+	if !ok {
+		return nil, nil
+	}
+
+	n := root.search(searchParts, 0)
+	if n != nil {
+		parts := parsePattern(n.pattern)
+		for index, part := range parts {
+			if part[0] == ':' {
+				params[part[1:]] = searchParts[index]
+			}
+			if part[0] == '*' && len(part) > 1 {
+				params[part[1:]] = strings.Join(searchParts[index:], "/")
+				break
+			}
+		}
+		return n, params
+	}
+	return nil, nil
+}
 
 func (r *router) handle(c *Context) {
-	key := c.Method + "-" + c.Path
-	if handler, ok := r.handlers[key]; ok {
-		handler(c)
+	n, params := r.getRoute(c.Method, c.Path)
+	if n != nil {
+		// 在调用匹配到的handler前，将解析出来的路由参数赋值给了c.Params
+		c.Params = params
+		key := c.Method + "-" + n.pattern
+		// 在handler中，通过Context对象访问到具体的值
+		r.handlers[key](c)
 	} else {
 		c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
 	}
