@@ -2,7 +2,9 @@ package main
 
 import (
 	"TinyGin/tinygin"
+	"log"
 	"net/http"
+	"time"
 )
 
 // type Engine struct{}
@@ -21,12 +23,28 @@ import (
 //	}
 //}
 
+func onlyForV2() tinygin.HandlerFunc {
+	return func(c *tinygin.Context) {
+		// start timer
+		t := time.Now()
+		// if a server error occurred
+		c.Fail(500, "Internal Server Error")
+		// Calculate resolution time
+		log.Printf("[%d] %s in %v for group v2", c.StatusCode, c.Req.RequestURI, time.Since(t))
+	}
+}
+
 func main() {
 	//http.HandleFunc("/", indexHandler)
 	//http.HandleFunc("/hello", helloHandler)
 	// 使用New()创建 gin 的实例
 
 	r := tinygin.New()
+
+	r.Use(tinygin.Logger()) // global middleware
+	r.GET("/", func(c *tinygin.Context) {
+		c.HTML(http.StatusOK, "<h1>Hello Gee</h1>")
+	})
 
 	// 使用 GET()方法添加路由
 	//r.GET("/", func(w http.ResponseWriter, req *http.Request) {
@@ -51,6 +69,7 @@ func main() {
 	})
 
 	v2 := r.Group("/v2")
+	v2.Use(onlyForV2()) // v2 group middleware
 	// // expect /hello/tinygin
 	v2.GET("/hello/:name", func(c *tinygin.Context) {
 		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)

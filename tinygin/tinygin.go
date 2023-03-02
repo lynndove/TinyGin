@@ -3,6 +3,7 @@ package tinygin
 import (
 	"log"
 	"net/http"
+	"strings"
 )
 
 // HandlerFunc 这是提供给框架用户的，用来定义路由映射的处理方法
@@ -89,7 +90,23 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	//	// w.WriteHeader(http.StatusNotFound)
 	//	fmt.Fprintf(w, "404 NOT FOUND: %s\n", req.URL)
 	//}
+
+	// 当我们接收到一个具体请求时，要判断该请求适用于哪些中间件
+	// 单通过 URL 的前缀来判断
+	// 得到中间件列表后，赋值给 c.handlers
+	var middlewares []HandlerFunc
+	for _, group := range engine.groups {
+		if strings.HasPrefix(req.URL.Path, group.prefix) {
+			middlewares = append(middlewares, group.middlewares...)
+		}
+	}
 	// 在调用 router.handle 之前, 构造了一个 Context 对象
 	c := newContext(w, req)
+	c.handlers = middlewares
 	engine.router.handle(c)
+}
+
+// Use 将中间件应用到某个 Group
+func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
+	group.middlewares = append(group.middlewares, middlewares...)
 }

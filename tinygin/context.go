@@ -9,6 +9,9 @@ import (
 // H 给map[string]interface{}起了一个别名tinygin.H，构建JSON数据时，显得更简洁
 type H map[string]interface{}
 
+// Context req 是结构体，用指针可以节省内存，Writer 是一个接口类型，不能用指针
+// 如何实现类似于gin中的c.Abort()这种中间件的退出机制呢？
+// context 中维护一个状态值，调用 c.Abort() 改变状态，循环时检查状态，发现已经中止停止循环即可
 type Context struct {
 	// origin objects
 	Writer http.ResponseWriter
@@ -19,6 +22,9 @@ type Context struct {
 	Params map[string]string
 	// response info
 	StatusCode int
+	// middleware
+	handlers []HandlerFunc
+	index    int
 }
 
 func (c *Context) Param(key string) string {
@@ -32,6 +38,18 @@ func newContext(w http.ResponseWriter, req *http.Request) *Context {
 		Req:    req,
 		Path:   req.URL.Path,
 		Method: req.Method,
+		index:  -1,
+	}
+}
+
+// index是记录当前执行到第几个中间件
+// 当在中间件中调用Next方法时，控制权交给了下一个中间件
+// 直到调用到最后一个中间件，然后再从后往前，调用每个中间件在Next方法之后定义的部分
+func (c *Context) Next() {
+	c.index++
+	size := len(c.handlers)
+	for ; c.index < size; c.index++ {
+		c.handlers[c.index](c)
 	}
 }
 
@@ -81,4 +99,10 @@ func (c *Context) HTML(code int, html string) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
 	c.Writer.Write([]byte(html))
+}
+
+// Fail 短路中间件，如果使用 后续的中间件和handler就直接跳过了
+func (c *Context) Fail(code int, err string) {
+	c.index = len(c.handlers)
+	c.JSON(code, H{"message": err})
 }
