@@ -1,8 +1,10 @@
 package tinygin
 
 import (
+	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -25,8 +27,10 @@ type (
 	Engine struct {
 		*RouterGroup
 		// router map[string]HandlerFunc
-		router *router
-		groups []*RouterGroup // store all groups
+		router        *router
+		groups        []*RouterGroup     // store all groups
+		htmlTemplates *template.Template // for html render 将所有的模板加载进内存
+		funcMap       template.FuncMap   // for html render 所有的自定义模板渲染函数
 	}
 )
 
@@ -103,10 +107,51 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// 在调用 router.handle 之前, 构造了一个 Context 对象
 	c := newContext(w, req)
 	c.handlers = middlewares
+	c.engine = engine
 	engine.router.handle(c)
 }
 
 // Use 将中间件应用到某个 Group
 func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
 	group.middlewares = append(group.middlewares, middlewares...)
+}
+
+// create static handler
+func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
+	absolutePath := path.Join(group.prefix, relativePath)
+	// StripPrefix返回一个处理程序
+	// 该处理程序通过从请求URL的Path（如果设置了RawPath）中删除给定前缀
+	// 并调用处理程序h来服务http请求
+	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
+	return func(c *Context) {
+		file := c.Param("filepath")
+		if _, err := fs.Open(file); err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		fileServer.ServeHTTP(c.Writer, c.Req)
+	}
+}
+
+// Static serve static files
+// Static这个方法是暴露给用户的
+// 用户可以将磁盘上的某个文件夹root映射到路由relativePath
+// eg : r.Static("/assets", "/usr/tinygin/blog/static")
+func (group *RouterGroup) Static(relativePath string, root string) {
+	handler := group.createStaticHandler(relativePath, http.Dir(root))
+	urlPattern := path.Join(relativePath, "/*filepath")
+	// Register GET handlers
+	group.GET(urlPattern, handler)
+}
+
+// 框架的模板渲染直接使用了html/template提供的
+// 设置自定义渲染函数funcMap
+func (engine *Engine) SetFuncMap(funcMap template.FuncMap) {
+	engine.funcMap = funcMap
+}
+
+// 加载模板
+func (engine *Engine) LoadHTMLGlob(pattern string) {
+	engine.htmlTemplates = template.Must(template.New("").Funcs(engine.funcMap).ParseGlob(pattern))
 }

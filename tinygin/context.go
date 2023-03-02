@@ -25,6 +25,8 @@ type Context struct {
 	// middleware
 	handlers []HandlerFunc
 	index    int
+
+	engine *Engine // 能够通过 Context 访问 Engine 中的 HTML 模板
 }
 
 func (c *Context) Param(key string) string {
@@ -95,10 +97,13 @@ func (c *Context) Data(code int, data []byte) {
 	c.Writer.Write(data)
 }
 
-func (c *Context) HTML(code int, html string) {
+func (c *Context) HTML(code int, name string, data interface{}) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
-	c.Writer.Write([]byte(html))
+	// c.Writer.Write([]byte(html))
+	if err := c.engine.htmlTemplates.ExecuteTemplate(c.Writer, name, data); err != nil {
+		c.Fail(500, err.Error())
+	}
 }
 
 // Fail 短路中间件，如果使用 后续的中间件和handler就直接跳过了

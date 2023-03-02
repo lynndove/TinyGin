@@ -2,6 +2,8 @@ package main
 
 import (
 	"TinyGin/tinygin"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"time"
@@ -34,6 +36,16 @@ func onlyForV2() tinygin.HandlerFunc {
 	}
 }
 
+type student struct {
+	Name string
+	Age  int8
+}
+
+func FormatAsDate(t time.Time) string {
+	year, month, day := t.Date()
+	return fmt.Sprintf("%d-%02d-%02d", year, month, day)
+}
+
 func main() {
 	//http.HandleFunc("/", indexHandler)
 	//http.HandleFunc("/hello", helloHandler)
@@ -42,9 +54,31 @@ func main() {
 	r := tinygin.New()
 
 	r.Use(tinygin.Logger()) // global middleware
-	r.GET("/", func(c *tinygin.Context) {
-		c.HTML(http.StatusOK, "<h1>Hello Gee</h1>")
+	r.SetFuncMap(template.FuncMap{
+		"FormatAsDate": FormatAsDate,
 	})
+	r.LoadHTMLGlob("templates/*")
+	r.Static("/assets", "./static")
+
+	stu1 := &student{Name: "Lynn", Age: 20}
+	stu2 := &student{Name: "Linxi", Age: 30}
+	r.GET("/", func(c *tinygin.Context) {
+		c.HTML(http.StatusOK, "arr.tmpl", tinygin.H{
+			"title":  "tinygin",
+			"strArr": [2]*student{stu1, stu2},
+		})
+	})
+
+	r.GET("/data", func(c *tinygin.Context) {
+		c.HTML(http.StatusOK, "custom_func.tmpl", tinygin.H{
+			"title": "tinygin",
+			"now":   time.Date(2023, 3, 2, 9, 0, 0, 0, time.UTC),
+		})
+	})
+
+	//r.GET("/", func(c *tinygin.Context) {
+	//	c.HTML(http.StatusOK, "<h1>Hello Gee</h1>")
+	//})
 
 	// 使用 GET()方法添加路由
 	//r.GET("/", func(w http.ResponseWriter, req *http.Request) {
@@ -54,19 +88,19 @@ func main() {
 	//	c.HTML(http.StatusOK, "<h1>Hello Go</h1>")
 	//})
 
-	r.GET("/index", func(c *tinygin.Context) {
-		c.HTML(http.StatusOK, "<h1>Index Page</h1>")
-	})
+	//r.GET("/index", func(c *tinygin.Context) {
+	//	c.HTML(http.StatusOK, "<h1>Index Page</h1>")
+	//})
 
 	// Engine 拥有 RouterGroup 的属性
-	v1 := r.Group("/v1")
-	v1.GET("/", func(c *tinygin.Context) {
-		c.HTML(http.StatusOK, "<h1>Hello Go</h1>")
-	})
-	v1.GET("/hello", func(c *tinygin.Context) {
-		// expect /hello?name=tinygin
-		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
-	})
+	//v1 := r.Group("/v1")
+	//v1.GET("/", func(c *tinygin.Context) {
+	//	c.HTML(http.StatusOK, "<h1>Hello Go</h1>")
+	//})
+	//v1.GET("/hello", func(c *tinygin.Context) {
+	//	// expect /hello?name=tinygin
+	//	c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
+	//})
 
 	v2 := r.Group("/v2")
 	v2.Use(onlyForV2()) // v2 group middleware
