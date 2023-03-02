@@ -53,7 +53,7 @@ func main() {
 
 	r := tinygin.New()
 
-	r.Use(tinygin.Logger()) // global middleware
+	r.Use(tinygin.Logger(), tinygin.Recovery()) // global middleware
 	r.SetFuncMap(template.FuncMap{
 		"FormatAsDate": FormatAsDate,
 	})
@@ -113,6 +113,11 @@ func main() {
 			"username": c.PostForm("username"),
 			"password": c.PostForm("password"),
 		})
+	})
+
+	r.GET("/panic", func(c *tinygin.Context) {
+		names := []string{"tinygin"}
+		c.String(http.StatusOK, names[100])
 	})
 
 	//r.GET("/hello", func(c *tinygin.Context) {
